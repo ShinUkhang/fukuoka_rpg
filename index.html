@@ -268,9 +268,14 @@ function buildMap(){
   for(let x=8;x<=49;x++) grid[20][x]=1;               // west branch -> kokura castle
   for(let x=51;x<=58;x++) grid[20][x]=1;             // east branch -> mojiko retro
   for(let x=14;x<=49;x++){ grid[13][x]=1; grid[14][x]=1; } // school road
+  // water: kokura castle moat (gap at 14,14 = bridge where road crosses) + nakasu riverside
+  for(let x=9;x<=13;x++) grid[14][x]=5;
+  for(let x=9;x<=14;x++) grid[19][x]=5;
+  for(let y=15;y<=18;y++){ grid[y][9]=5; grid[y][14]=5; }
+  for(let x=12;x<=32;x++) grid[35][x]=5;
   // trees (avoid paths/grounds/rects)
   const avoid=(x,y)=>{
-    if(grid[y][x]===1||grid[y][x]===2||grid[y][x]===3) return true;
+    if(grid[y][x]===1||grid[y][x]===2||grid[y][x]===3||grid[y][x]===5) return true;
     if(x>=24&&x<=36&&y>=8&&y<=13) return true;   // school
     if(x>=42&&x<=50&&y>=36&&y<=40) return true;  // hakata plaza
     if(x>=54&&x<=62&&y>=34&&y<=40) return true;  // dazaifu
@@ -294,12 +299,19 @@ function buildMap(){
   addSolid(50,15,6,3);   // mojiko retro station
   for(const st of stalls) addSolid(st.x,st.y,2,2); // yatai stalls
   addSolid(24,8,13,5);   // school
+  for(let x=9;x<=13;x++) addSolid(x,14,1,1);   // moat top
+  for(let x=9;x<=14;x++) addSolid(x,19,1,1);   // moat bottom
+  for(let y=15;y<=18;y++){ addSolid(9,y,1,1); addSolid(14,y,1,1); } // moat sides
+  addSolid(12,35,21,1);  // nakasu river
+  for(const d of DECORDEF) addSolid(d.x,d.y+0.35,1,0.65); // decor figures
   for(const tr of trees) addSolid(tr.x,tr.y+0.35,1,0.65);
 }
 const trees=[], flowers=[];
 const stalls=[{x:14,y:36},{x:17,y:36},{x:20,y:36},{x:23,y:36},{x:26,y:36},{x:29,y:36}];
 // npc positions (tile)
 const NPCPOS=[{x:59,y:37},{x:22,y:38},{x:14,y:21},{x:54,y:21},{x:20,y:14},{x:32,y:15}];
+// decorative figures (no interaction): station staff, castle daimyo, shrine worshipper
+const DECORDEF=[{x:44,y:38,kind:"staff"},{x:52,y:18,kind:"staff"},{x:11,y:21,kind:"daimyo"},{x:58,y:38,kind:"pray"}];
 buildMap();
 
 /* ================= tile & object drawing ================= */
@@ -310,6 +322,11 @@ function drawTile(x,y,px,py){
   else if(v===2){ R(px,py,16,16,h%2?"#9aa0a8":"#9399a1"); R(px,py,16,1,"#7c828a"); R(px+8,py,1,16,"#7c828a"); }
   else if(v===3){ R(px,py,16,16,"#d9c48a"); if(h>4) R(px+5,py+9,3,2,"#c2ab6f"); }
   else if(v===4){ R(px,py,16,16,"#7d8a7d"); if(h>3) R(px+4+(h%3),py+7,4,3,"#5f6b5f"); }
+  else if(v===5){ // water
+    R(px,py,16,16,"#2f6fb8");
+    const wv=Math.floor(performance.now()/550)%2;
+    R(px+2,py+4+wv*3,5,2,"#8ec8f0"); R(px+9,py+10-wv*3,5,2,"#8ec8f0");
+  }
   else { R(px,py,16,16,"#222"); }
 }
 function drawTree(px,py,rock){
@@ -447,6 +464,32 @@ function drawNPC(px,py,npc,frame){
     ctx.fillText("!",f,yy-8+b);
   }
 }
+function drawDecor(px,py,kind){
+  const f=Math.round(px), y=Math.round(py);
+  ctx.fillStyle="rgba(0,0,0,.25)"; ctx.fillRect(f-5,y+14,10,3);
+  if(kind==="staff"){ // station attendant: navy uniform + cap
+    R(f-4,y+12,3,4,"#2b2b2b"); R(f+1,y+12,3,4,"#2b2b2b");
+    R(f-6,y+5,12,8,"#1f3a6e"); R(f-6,y+5,12,2,"#16294f");
+    R(f-2,y+8,4,3,"#ffd93d");
+    R(f-5,y-2,10,8,"#f2c89b");
+    R(f-3,y+1,2,2,"#222"); R(f+1,y+1,2,2,"#222");
+    R(f-6,y-5,12,4,"#1f3a6e"); R(f-6,y-2,12,2,"#c2255c");
+  }else if(kind==="daimyo"){ // castle lord: purple robe + gold-trimmed kabuto
+    R(f-4,y+12,3,4,"#3a2e20"); R(f+1,y+12,3,4,"#3a2e20");
+    R(f-7,y+4,14,9,"#6d28a8"); R(f-7,y+4,14,2,"#ffd93d");
+    R(f-3,y+8,6,4,"#ffd93d");
+    R(f-5,y-3,10,8,"#f2c89b");
+    R(f-3,y+0,2,2,"#222"); R(f+1,y+0,2,2,"#222");
+    R(f-6,y-6,12,4,"#2b2b2b");
+    R(f-8,y-9,3,7,"#ffd93d"); R(f+5,y-9,3,7,"#ffd93d");
+  }else{ // pray: worshipper bowing toward the shrine
+    R(f-5,y+11,10,4,"#3a4a6a");
+    R(f-6,y+5,12,7,"#4a5a7a");
+    R(f-4,y+0,9,6,"#f2c89b");
+    R(f-6,y-1,12,3,"#2b2b2b");
+    R(f-2,y+6,4,3,"#f2c89b");
+  }
+}
 /* ================= state ================= */
 const NPCDEF=[
   {pos:0, c:["#e8e8e8","#c2255c","hair"], quest:0},
@@ -456,7 +499,7 @@ const NPCDEF=[
   {pos:4, c:["#868e96","#6c757d","hair"], snack:true},
   {pos:5, c:["#1f3a6e","#16294f","hair"], walk:true},
 ];
-let npcs=[], player, cam={x:0,y:0}, state="menu";
+let npcs=[], decor=[], player, cam={x:0,y:0}, state="menu";
 let score=0, qdone=[false,false,false,false], qatt=[0,0,0,0], qpts=0;
 let elapsed=0, grade_=null, dlgState=null, typeTimer=null, snackDone=false;
 const BOARD_KEY="fukuokaRpgBoard_v1";
@@ -464,6 +507,7 @@ const BOARD_KEY="fukuokaRpgBoard_v1";
 function resetGame(){
   buildMap();
   npcs=NPCDEF.map(d=>({x:NPCPOS[d.pos].x*TW+8, y:NPCPOS[d.pos].y*TW+4, c:d.c, quest:d.quest, walk:d.walk, snack:d.snack, dir:0, frame:0, ft:0}));
+  decor=DECORDEF.map(d=>({x:d.x*TW+8, y:d.y*TW+4, kind:d.kind}));
   player={x:46*TW+8, y:39*TW+8, dir:0, frame:0, ft:0, moving:false};
   score=0; qdone=[false,false,false,false]; qatt=[0,0,0,0]; qpts=0; snackDone=false;
   elapsed=0; grade_=null; dlgState=null;
@@ -702,6 +746,7 @@ function render(){
   const actors=[];
   for(const tr of trees){ if(tr.x<x0-1||tr.x>x1+1||tr.y<y0-1||tr.y>y1+1) continue; actors.push({y:tr.y*TW+16,f:()=>drawTree(ox+tr.x*TW,oy+tr.y*TW,tr.rock)}); }
   for(const n of npcs) actors.push({y:n.y,f:()=>drawNPC(n.x+ox,n.y-14+oy,n,n.frame)});
+  for(const d of decor) actors.push({y:d.y,f:()=>drawDecor(d.x+ox,d.y-14+oy,d.kind)});
   actors.push({y:player.y,f:()=>drawGirl(player.x+ox,player.y-14+oy,player.dir,player.frame)});
   actors.sort((a,b)=>a.y-b.y).forEach(a=>a.f());
   // school goal sparkle
